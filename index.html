@@ -3,280 +3,307 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>실시간 경제지표 대시보드</title>
+<title>📊 실시간 경제지표 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #1a1a2e; --text2: #6b7280;
-  --border: #e5e7eb; --up: #ef4444; --down: #3b82f6; --accent: #6366f1;
-  --card-hover: #f9fafb; --chart-bg: #fff; --tab-bg: #e5e7eb; --tab-active: #fff;
-  --shadow: 0 1px 3px rgba(0,0,0,.08); --shadow-lg: 0 4px 12px rgba(0,0,0,.1);
+:root{
+  --bg:#f0f2f5;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--border:#e5e7eb;
+  --up:#ef4444;--down:#3b82f6;--accent:#6366f1;--shadow:0 2px 8px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.1);--hero-bg:linear-gradient(135deg,#667eea,#764ba2);
 }
-.dark {
-  --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text2: #94a3b8;
-  --border: #334155; --card-hover: #263348; --chart-bg: #1e293b;
-  --tab-bg: #334155; --tab-active: #1e293b; --shadow: 0 1px 3px rgba(0,0,0,.3);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,.4);
+[data-theme="dark"]{
+  --bg:#0b0f1a;--card:#151b2e;--text:#e2e8f0;--text2:#8892a8;--border:#1e293b;
+  --shadow:0 2px 8px rgba(0,0,0,.3);--shadow-lg:0 8px 24px rgba(0,0,0,.5);
+  --hero-bg:linear-gradient(135deg,#1e1b4b,#312e81);
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); transition:background .3s,color .3s; min-height:100vh; }
-.header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
-.header h1 { font-size:16px; font-weight:700; }
-.header-right { display:flex; align-items:center; gap:8px; }
-.status { font-size:11px; color:var(--text2); }
-.status .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e; margin-right:4px; animation:pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-.dark-toggle { background:none; border:1px solid var(--border); border-radius:8px; padding:6px 10px; cursor:pointer; font-size:14px; color:var(--text); }
-.tabs { display:flex; gap:4px; padding:8px 16px; background:var(--card); border-bottom:1px solid var(--border); overflow-x:auto; }
-.tab { padding:6px 14px; border-radius:8px; border:none; background:var(--tab-bg); color:var(--text2); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; transition:all .2s; }
-.tab.active { background:var(--accent); color:#fff; }
-.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; padding:12px 16px; }
-@media(min-width:768px){ .cards{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:16px 24px;} }
-.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; cursor:pointer; transition:all .2s; box-shadow:var(--shadow); position:relative; overflow:hidden; }
-.card:hover { box-shadow:var(--shadow-lg); transform:translateY(-1px); }
-.card.selected { border-color:var(--accent); box-shadow:0 0 0 2px rgba(99,102,241,.3); }
-.card .name { font-size:11px; color:var(--text2); font-weight:500; margin-bottom:4px; }
-.card .price { font-size:18px; font-weight:700; margin-bottom:2px; }
-.card .change { font-size:12px; font-weight:600; }
-.card .change.up { color:var(--up); }
-.card .change.down { color:var(--down); }
-.card .sparkline { position:absolute; bottom:0; left:0; right:0; height:30px; opacity:.15; }
-.card.loading .price,.card.loading .change { background:var(--border); color:transparent; border-radius:4px; animation:shimmer 1.5s infinite; }
-@keyframes shimmer { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.6} }
-.chart-container { margin:0 16px 16px; background:var(--chart-bg); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:var(--shadow); display:none; }
-.chart-container.visible { display:block; animation:fadeIn .3s; }
-@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-.chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
-.chart-title { font-size:15px; font-weight:700; }
-.range-btns { display:flex; gap:4px; }
-.range-btn { padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:none; color:var(--text2); font-size:11px; cursor:pointer; transition:all .2s; }
-.range-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-.chart-wrap { position:relative; height:250px; }
-@media(min-width:768px){ .chart-wrap{height:350px;} .header h1{font-size:18px;} }
-.chart-info { display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--text2); flex-wrap:wrap; }
-.error-msg { text-align:center; padding:40px 16px; color:var(--text2); font-size:13px; }
-.footer { text-align:center; padding:16px; font-size:11px; color:var(--text2); }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);transition:all .3s}
+a{color:inherit;text-decoration:none}
+
+/* Dark toggle */
+.dark-toggle{position:fixed;top:12px;right:12px;z-index:999;background:var(--card);border:1px solid var(--border);border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;transition:all .3s}
+
+/* HERO / HOME */
+.hero{background:var(--hero-bg);color:#fff;padding:40px 20px 30px;text-align:center;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:-30px;left:0;right:0;height:60px;background:var(--bg);border-radius:50% 50% 0 0}
+.hero h1{font-size:1.6rem;font-weight:800;margin-bottom:6px}
+.hero p{font-size:.85rem;opacity:.85}
+.hero .update-time{margin-top:10px;font-size:.75rem;opacity:.7}
+.hero .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4ade80;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Category Section */
+.section{padding:0 16px;margin-bottom:24px}
+.section-title{font-size:.85rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 12px;padding-left:4px;display:flex;align-items:center;gap:8px}
+
+/* Card Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+@media(min-width:768px){.grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.card .label{font-size:.7rem;color:var(--text2);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.card .price{font-size:1.25rem;font-weight:800;margin-bottom:2px}
+.card .change{font-size:.8rem;font-weight:700}
+.card .change.up{color:var(--up)}
+.card .change.down{color:var(--down)}
+.card .mini-chart{height:50px;margin:8px -4px -4px;opacity:.8}
+.card.loading .price,.card.loading .change{background:var(--border);color:transparent;border-radius:4px;display:inline-block;min-width:60px}
+
+/* Detail View */
+.detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:500;overflow-y:auto;display:none;animation:slideUp .3s}
+.detail-overlay.visible{display:block}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+.detail-header{display:flex;align-items:center;gap:12px;padding:16px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.detail-back{background:none;border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:.9rem;color:var(--text);font-weight:600}
+.detail-name{font-size:1.1rem;font-weight:800}
+.detail-body{padding:16px}
+.detail-price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.detail-current{font-size:2rem;font-weight:800}
+.detail-change{font-size:1rem;font-weight:700}
+.detail-change.up{color:var(--up)}
+.detail-change.down{color:var(--down)}
+.range-btns{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.range-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.range-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chart-wrap{position:relative;height:280px;background:var(--card);border-radius:14px;padding:12px;border:1px solid var(--border);box-shadow:var(--shadow)}
+@media(min-width:768px){.chart-wrap{height:380px}}
+.detail-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
+.stat-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px}
+.stat-label{font-size:.7rem;color:var(--text2);font-weight:600;text-transform:uppercase}
+.stat-value{font-size:1rem;font-weight:700;margin-top:2px}
+
+.footer{text-align:center;padding:20px 16px;font-size:.7rem;color:var(--text2)}
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>📊 경제지표 대시보드</h1>
-  <div class="header-right">
-    <span class="status"><span class="dot"></span><span id="updateTime">로딩중...</span></span>
-    <button class="dark-toggle" onclick="toggleDark()" title="다크모드">🌙</button>
+<button class="dark-toggle" onclick="toggleDark()" id="darkToggle">🌙</button>
+
+<!-- HOME -->
+<div id="home">
+  <div class="hero">
+    <h1>📊 실시간 경제지표</h1>
+    <p>글로벌 시장을 한눈에</p>
+    <div class="update-time"><span class="dot"></span><span id="updateTime">로딩중...</span></div>
   </div>
+  <div id="sections"></div>
+  <div class="footer">Yahoo Finance · 30초 자동 갱신</div>
 </div>
-<div class="tabs" id="tabs"></div>
-<div class="cards" id="cards"></div>
-<div class="chart-container" id="chartContainer">
-  <div class="chart-header">
-    <span class="chart-title" id="chartTitle"></span>
+
+<!-- DETAIL -->
+<div class="detail-overlay" id="detail">
+  <div class="detail-header">
+    <button class="detail-back" onclick="closeDetail()">← 뒤로</button>
+    <span class="detail-name" id="detailName"></span>
+  </div>
+  <div class="detail-body">
+    <div class="detail-price-row">
+      <span class="detail-current" id="detailPrice"></span>
+      <span class="detail-change" id="detailChange"></span>
+    </div>
     <div class="range-btns" id="rangeBtns"></div>
+    <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+    <div class="detail-stats" id="detailStats"></div>
   </div>
-  <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
-  <div class="chart-info" id="chartInfo"></div>
 </div>
-<div class="footer">Yahoo Finance 데이터 · 30초 자동 갱신</div>
 
 <script>
-const CATEGORIES = [
-  { id:'indices', name:'주가지수', tickers:[
-    {sym:'^GSPC',name:'S&P 500',dp:2},{sym:'^IXIC',name:'나스닥',dp:2},{sym:'^DJI',name:'다우존스',dp:2},
+const CATEGORIES=[
+  {id:'indices',name:'📈 주가지수',tickers:[
+    {sym:'^GSPC',name:'S&P 500',dp:2},{sym:'^IXIC',name:'나스닥',dp:2},{sym:'^DJI',name:'다우존스',dp:0},
     {sym:'^KS11',name:'코스피',dp:2},{sym:'^KQ11',name:'코스닥',dp:2}
   ]},
-  { id:'rates', name:'환율·금리', tickers:[
-    {sym:'KRW=X',name:'달러/원',dp:2},{sym:'^TNX',name:'미국채10Y',dp:3,suffix:'%'},{sym:'^VIX',name:'VIX',dp:2}
+  {id:'rates',name:'💱 환율 · 금리',tickers:[
+    {sym:'KRW=X',name:'달러/원',dp:2},{sym:'^TNX',name:'미국채 10Y',dp:3,suffix:'%'},{sym:'^VIX',name:'VIX 지수',dp:2}
   ]},
-  { id:'commodities', name:'원자재', tickers:[
+  {id:'commodities',name:'🪙 원자재',tickers:[
     {sym:'GC=F',name:'금',dp:2,prefix:'$'},{sym:'SI=F',name:'은',dp:3,prefix:'$'},
-    {sym:'HG=F',name:'구리',dp:4,prefix:'$'},{sym:'CL=F',name:'WTI유',dp:2,prefix:'$'}
+    {sym:'HG=F',name:'구리',dp:4,prefix:'$'},{sym:'CL=F',name:'WTI 원유',dp:2,prefix:'$'}
   ]}
 ];
-const RANGES = [
-  {label:'1일',range:'1d',interval:'5m'},
-  {label:'1주',range:'5d',interval:'15m'},
-  {label:'1개월',range:'1mo',interval:'1d'},
-  {label:'3개월',range:'3mo',interval:'1d'},
-  {label:'1년',range:'1y',interval:'1wk'},
-  {label:'5년',range:'5y',interval:'1mo'}
+const RANGES=[
+  {label:'1일',range:'1d',interval:'5m'},{label:'1주',range:'5d',interval:'15m'},
+  {label:'1개월',range:'1mo',interval:'1d'},{label:'3개월',range:'3mo',interval:'1d'},
+  {label:'1년',range:'1y',interval:'1wk'},{label:'5년',range:'5y',interval:'1mo'}
 ];
 
-let activeCat = 'indices', selectedTicker = null, currentRange = '1d', chartInstance = null;
-const cache = {};
+const cache={}, miniCharts={};
+let chartInstance=null, currentSym=null, currentRange='1d';
 
-function fmt(n, dp=2, prefix='', suffix='') {
-  if(n==null||isNaN(n)) return '-';
-  const s = Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp});
-  return prefix + (n<0?'-':'') + s + suffix;
+function fmt(n,dp=2,pre='',suf=''){
+  if(n==null||isNaN(n))return'-';
+  return pre+(n<0?'-':'')+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp})+suf;
 }
 
-function toggleDark() {
-  document.body.classList.toggle('dark');
-  document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
-  if(chartInstance) updateChartColors();
+function toggleDark(){
+  const d=document.documentElement;
+  const isDark=d.getAttribute('data-theme')==='dark';
+  d.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('darkToggle').textContent=isDark?'🌙':'☀️';
+  localStorage.setItem('eco_theme',isDark?'light':'dark');
+  // Redraw mini charts
+  Object.keys(miniCharts).forEach(sym=>{if(miniCharts[sym])miniCharts[sym].destroy();});
+  Object.keys(cache).forEach(sym=>{if(cache[sym]?.points)drawMini(sym,cache[sym].points);});
+  if(chartInstance&&currentSym)loadChart(currentSym,currentRange);
 }
 
-// Tabs
-function renderTabs() {
-  const el = document.getElementById('tabs');
-  el.innerHTML = CATEGORIES.map(c =>
-    `<button class="tab ${c.id===activeCat?'active':''}" onclick="switchCat('${c.id}')">${c.name}</button>`
-  ).join('');
-}
+(function(){
+  const t=localStorage.getItem('eco_theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');document.addEventListener('DOMContentLoaded',()=>{document.getElementById('darkToggle').textContent='☀️';});}
+})();
 
-function switchCat(id) {
-  activeCat = id;
-  selectedTicker = null;
-  document.getElementById('chartContainer').classList.remove('visible');
-  renderTabs(); renderCards();
-}
-
-// Cards
-function renderCards() {
-  const cat = CATEGORIES.find(c=>c.id===activeCat);
-  const el = document.getElementById('cards');
-  el.innerHTML = cat.tickers.map(t => {
-    const d = cache[t.sym];
-    const sel = selectedTicker===t.sym ? 'selected' : '';
-    const loading = !d ? 'loading' : '';
-    const price = d ? fmt(d.price, t.dp, t.prefix||'', t.suffix||'') : '---';
-    const chg = d ? d.changePercent : 0;
-    const chgClass = chg>0?'up':chg<0?'down':'';
-    const chgText = d ? `${chg>0?'+':''}${chg.toFixed(2)}%` : '-';
-    return `<div class="card ${sel} ${loading}" onclick="selectTicker('${t.sym}')">
-      <div class="name">${t.name}</div>
-      <div class="price">${price}</div>
-      <div class="change ${chgClass}">${chgText}</div>
-    </div>`;
-  }).join('');
-}
-
-async function fetchYahoo(url) {
-  try {
-    const r = await fetch(url);
-    if(r.ok) return await r.json();
-  } catch(e) {}
-  try {
-    const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const r = await fetch(proxy);
-    if(r.ok) return await r.json();
-  } catch(e) {}
+async function fetchYahoo(url){
+  try{const r=await fetch(url);if(r.ok)return await r.json();}catch(e){}
+  try{const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));if(r.ok)return await r.json();}catch(e){}
   return null;
 }
 
-async function fetchQuote(sym) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=5m`;
-  const data = await fetchYahoo(url);
-  if(!data?.chart?.result?.[0]) return null;
-  const r = data.chart.result[0];
-  const meta = r.meta;
-  const price = meta.regularMarketPrice;
-  const prev = meta.chartPreviousClose || meta.previousClose;
-  const change = price - prev;
-  const changePercent = prev ? (change/prev)*100 : 0;
-  return { price, prev, change, changePercent };
+async function fetchQuoteAndPoints(sym){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=5m`;
+  const data=await fetchYahoo(url);
+  if(!data?.chart?.result?.[0])return null;
+  const r=data.chart.result[0],meta=r.meta;
+  const price=meta.regularMarketPrice,prev=meta.chartPreviousClose||meta.previousClose;
+  const change=price-prev,changePct=prev?(change/prev)*100:0;
+  const ts=r.timestamp||[],closes=r.indicators?.quote?.[0]?.close||[];
+  const points=ts.map((t,i)=>({x:t*1000,y:closes[i]})).filter(p=>p.y!=null);
+  return{price,prev,change,changePct,points};
 }
 
-async function fetchChart(sym, range, interval) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`;
-  const data = await fetchYahoo(url);
-  if(!data?.chart?.result?.[0]) return null;
-  const r = data.chart.result[0];
-  const ts = r.timestamp || [];
-  const closes = r.indicators?.quote?.[0]?.close || [];
-  return ts.map((t,i) => ({x:t*1000, y:closes[i]})).filter(p=>p.y!=null);
+async function fetchChartData(sym,range,interval){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`;
+  const data=await fetchYahoo(url);
+  if(!data?.chart?.result?.[0])return null;
+  const r=data.chart.result[0],ts=r.timestamp||[],closes=r.indicators?.quote?.[0]?.close||[];
+  return ts.map((t,i)=>({x:t*1000,y:closes[i]})).filter(p=>p.y!=null);
 }
 
-async function loadAllQuotes() {
-  const all = CATEGORIES.flatMap(c=>c.tickers);
-  await Promise.allSettled(all.map(async t => {
-    const q = await fetchQuote(t.sym);
-    if(q) cache[t.sym] = q;
+function renderSections(){
+  const el=document.getElementById('sections');
+  el.innerHTML=CATEGORIES.map(cat=>`
+    <div class="section">
+      <div class="section-title">${cat.name}</div>
+      <div class="grid">${cat.tickers.map(t=>`
+        <div class="card loading" id="card-${CSS.escape(t.sym)}" onclick="openDetail('${t.sym}')">
+          <div class="label">${t.name}</div>
+          <div class="price" id="price-${CSS.escape(t.sym)}">---</div>
+          <div class="change" id="change-${CSS.escape(t.sym)}">-</div>
+          <div class="mini-chart"><canvas id="mini-${CSS.escape(t.sym)}"></canvas></div>
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function getInfo(sym){
+  for(const c of CATEGORIES)for(const t of c.tickers)if(t.sym===sym)return t;
+  return{name:sym,dp:2};
+}
+
+function drawMini(sym,points){
+  const canvasId='mini-'+CSS.escape(sym);
+  const canvas=document.getElementById(canvasId);
+  if(!canvas||!points.length)return;
+  if(miniCharts[sym])miniCharts[sym].destroy();
+  const first=points[0].y,last=points[points.length-1].y;
+  const isUp=last>=first;
+  const color=isUp?'#ef4444':'#3b82f6';
+  const bg=isUp?'rgba(239,68,68,.15)':'rgba(59,130,246,.15)';
+  miniCharts[sym]=new Chart(canvas,{
+    type:'line',
+    data:{datasets:[{data:points,borderColor:color,backgroundColor:bg,borderWidth:1.5,pointRadius:0,fill:true,tension:.3}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false,type:'time'},y:{display:false}}}
+  });
+}
+
+function updateCard(sym,d){
+  const info=getInfo(sym);
+  const card=document.getElementById('card-'+CSS.escape(sym));
+  const priceEl=document.getElementById('price-'+CSS.escape(sym));
+  const changeEl=document.getElementById('change-'+CSS.escape(sym));
+  if(!card)return;
+  card.classList.remove('loading');
+  priceEl.textContent=fmt(d.price,info.dp,info.prefix||'',info.suffix||'');
+  const chgClass=d.changePct>0?'up':d.changePct<0?'down':'';
+  changeEl.className='change '+chgClass;
+  changeEl.textContent=`${d.changePct>0?'+':''}${d.changePct.toFixed(2)}%`;
+}
+
+async function loadAll(){
+  const all=CATEGORIES.flatMap(c=>c.tickers);
+  await Promise.allSettled(all.map(async t=>{
+    const d=await fetchQuoteAndPoints(t.sym);
+    if(d){cache[t.sym]=d;updateCard(t.sym,d);drawMini(t.sym,d.points);}
   }));
-  renderCards();
-  document.getElementById('updateTime').textContent = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('updateTime').textContent=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 
-function updateChartColors() {
-  if(!chartInstance) return;
-  const isDark = document.body.classList.contains('dark');
-  const gridColor = isDark ? 'rgba(148,163,184,.15)' : 'rgba(0,0,0,.06)';
-  const tickColor = isDark ? '#94a3b8' : '#6b7280';
-  chartInstance.options.scales.x.grid.color = gridColor;
-  chartInstance.options.scales.y.grid.color = gridColor;
-  chartInstance.options.scales.x.ticks.color = tickColor;
-  chartInstance.options.scales.y.ticks.color = tickColor;
-  chartInstance.update('none');
+function openDetail(sym){
+  currentSym=sym;currentRange='1d';
+  const info=getInfo(sym),d=cache[sym];
+  document.getElementById('detailName').textContent=info.name;
+  if(d){
+    document.getElementById('detailPrice').textContent=fmt(d.price,info.dp,info.prefix||'',info.suffix||'');
+    const chgEl=document.getElementById('detailChange');
+    chgEl.className='detail-change '+(d.changePct>0?'up':'down');
+    chgEl.textContent=`${d.changePct>0?'+':''}${d.change.toFixed(info.dp)} (${d.changePct>0?'+':''}${d.changePct.toFixed(2)}%)`;
+  }
+  document.getElementById('detail').classList.add('visible');
+  loadChart(sym,'1d');
 }
 
-async function selectTicker(sym) {
-  selectedTicker = sym;
-  renderCards();
-  await loadChart(sym, currentRange);
+function closeDetail(){
+  document.getElementById('detail').classList.remove('visible');
+  if(chartInstance){chartInstance.destroy();chartInstance=null;}
 }
 
-function getTickerInfo(sym) {
-  for(const c of CATEGORIES) for(const t of c.tickers) if(t.sym===sym) return t;
-  return {name:sym,dp:2};
-}
-
-async function loadChart(sym, rangeId) {
-  currentRange = rangeId;
-  const container = document.getElementById('chartContainer');
-  container.classList.add('visible');
-  const info = getTickerInfo(sym);
-  document.getElementById('chartTitle').textContent = info.name + ' (' + sym + ')';
-
-  // Range buttons
-  document.getElementById('rangeBtns').innerHTML = RANGES.map(r =>
+async function loadChart(sym,rangeId){
+  currentRange=rangeId;
+  const info=getInfo(sym);
+  document.getElementById('rangeBtns').innerHTML=RANGES.map(r=>
     `<button class="range-btn ${r.range===rangeId?'active':''}" onclick="loadChart('${sym}','${r.range}')">${r.label}</button>`
   ).join('');
 
-  const rObj = RANGES.find(r=>r.range===rangeId);
-  const points = await fetchChart(sym, rObj.range, rObj.interval);
+  let points;
+  if(rangeId==='1d'&&cache[sym]?.points){points=cache[sym].points;}
+  else{const rObj=RANGES.find(r=>r.range===rangeId);points=await fetchChartData(sym,rObj.range,rObj.interval);}
 
-  if(!points||!points.length) {
-    document.getElementById('chartInfo').innerHTML = '<span>데이터를 불러올 수 없습니다</span>';
-    if(chartInstance){chartInstance.destroy();chartInstance=null;}
+  if(!points||!points.length){
+    document.getElementById('detailStats').innerHTML='<div class="stat-item"><div class="stat-label">오류</div><div class="stat-value">데이터 없음</div></div>';
     return;
   }
 
-  const first = points[0].y, last = points[points.length-1].y;
-  const chg = last-first, chgPct = (chg/first*100);
-  const isUp = chg >= 0;
-  const color = isUp ? '#ef4444' : '#3b82f6';
-  const bgColor = isUp ? 'rgba(239,68,68,.1)' : 'rgba(59,130,246,.1)';
-  const isDark = document.body.classList.contains('dark');
+  const first=points[0].y,last=points[points.length-1].y;
+  const high=Math.max(...points.map(p=>p.y)),low=Math.min(...points.map(p=>p.y));
+  const chg=last-first,chgPct=(chg/first)*100;
+  const isUp=chg>=0;
+  const color=isUp?'#ef4444':'#3b82f6';
+  const bg=isUp?'rgba(239,68,68,.08)':'rgba(59,130,246,.08)';
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const gridC=isDark?'rgba(148,163,184,.1)':'rgba(0,0,0,.05)';
+  const tickC=isDark?'#8892a8':'#6b7280';
 
-  document.getElementById('chartInfo').innerHTML =
-    `<span>시가: ${fmt(first,info.dp,info.prefix||'',info.suffix||'')}</span>
-     <span>현재: ${fmt(last,info.dp,info.prefix||'',info.suffix||'')}</span>
-     <span style="color:${color}">${chg>=0?'+':''}${chg.toFixed(info.dp)} (${chgPct>=0?'+':''}${chgPct.toFixed(2)}%)</span>
-     <span>고가: ${fmt(Math.max(...points.map(p=>p.y)),info.dp)}</span>
-     <span>저가: ${fmt(Math.min(...points.map(p=>p.y)),info.dp)}</span>`;
+  document.getElementById('detailStats').innerHTML=`
+    <div class="stat-item"><div class="stat-label">시가</div><div class="stat-value">${fmt(first,info.dp,info.prefix||'',info.suffix||'')}</div></div>
+    <div class="stat-item"><div class="stat-label">현재가</div><div class="stat-value">${fmt(last,info.dp,info.prefix||'',info.suffix||'')}</div></div>
+    <div class="stat-item"><div class="stat-label">고가</div><div class="stat-value" style="color:var(--up)">${fmt(high,info.dp,info.prefix||'',info.suffix||'')}</div></div>
+    <div class="stat-item"><div class="stat-label">저가</div><div class="stat-value" style="color:var(--down)">${fmt(low,info.dp,info.prefix||'',info.suffix||'')}</div></div>
+    <div class="stat-item"><div class="stat-label">변동</div><div class="stat-value" style="color:${color}">${chg>=0?'+':''}${chg.toFixed(info.dp)}</div></div>
+    <div class="stat-item"><div class="stat-label">변동률</div><div class="stat-value" style="color:${color}">${chgPct>=0?'+':''}${chgPct.toFixed(2)}%</div></div>`;
 
-  if(chartInstance) chartInstance.destroy();
-  const ctx = document.getElementById('mainChart').getContext('2d');
-  chartInstance = new Chart(ctx, {
+  if(chartInstance)chartInstance.destroy();
+  const ctx=document.getElementById('mainChart').getContext('2d');
+  chartInstance=new Chart(ctx,{
     type:'line',
-    data:{datasets:[{
-      data:points, borderColor:color, backgroundColor:bgColor,
-      borderWidth:1.5, pointRadius:0, pointHitRadius:8, fill:true, tension:.1
-    }]},
-    options:{
-      responsive:true, maintainAspectRatio:false, animation:{duration:400},
-      plugins:{legend:{display:false},tooltip:{
-        mode:'index',intersect:false,
-        callbacks:{label:ctx=>`${info.name}: ${fmt(ctx.parsed.y,info.dp,info.prefix||'',info.suffix||'')}`}
-      }},
+    data:{datasets:[{data:points,borderColor:color,backgroundColor:bg,borderWidth:2,pointRadius:0,pointHitRadius:10,fill:true,tension:.1}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,
+        callbacks:{label:c=>`${info.name}: ${fmt(c.parsed.y,info.dp,info.prefix||'',info.suffix||'')}`}}},
       scales:{
-        x:{type:'time',grid:{color:isDark?'rgba(148,163,184,.15)':'rgba(0,0,0,.06)'},
-          ticks:{color:isDark?'#94a3b8':'#6b7280',maxTicksLimit:6,font:{size:10}},
-          time:{tooltipFormat:'yyyy-MM-dd HH:mm'}},
-        y:{grid:{color:isDark?'rgba(148,163,184,.15)':'rgba(0,0,0,.06)'},
-          ticks:{color:isDark?'#94a3b8':'#6b7280',font:{size:10},
-            callback:v=>fmt(v,info.dp>2?2:info.dp)}}
+        x:{type:'time',grid:{color:gridC},ticks:{color:tickC,maxTicksLimit:6,font:{size:10}},time:{tooltipFormat:'yyyy-MM-dd HH:mm'}},
+        y:{grid:{color:gridC},ticks:{color:tickC,font:{size:10},callback:v=>fmt(v,info.dp>2?2:info.dp)}}
       },
       interaction:{mode:'index',intersect:false}
     }
@@ -284,15 +311,9 @@ async function loadChart(sym, rangeId) {
 }
 
 // Init
-renderTabs(); renderCards();
-loadAllQuotes();
-setInterval(loadAllQuotes, 30000);
-
-// Auto dark mode
-if(window.matchMedia('(prefers-color-scheme:dark)').matches) {
-  document.body.classList.add('dark');
-  document.querySelector('.dark-toggle').textContent = '☀️';
-}
+renderSections();
+loadAll();
+setInterval(loadAll,30000);
 </script>
 </body>
 </html>
